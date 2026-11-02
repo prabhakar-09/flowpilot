@@ -1,5 +1,17 @@
 
-export function runWorkflow(workflow) {
+import { actionHandlers } from "./handlers.js";
+
+export function runWorkflow(workflow, input={}) {
+
+    
+    const context = {
+        input: input,
+        variables: {},
+        steps: {}
+    };
+
+    console.log("Initial Execution Context:", context);
+
 
     let currentStepId = workflow.startStepId;
     let executedCount = 0;
@@ -25,11 +37,22 @@ export function runWorkflow(workflow) {
         if (step.type === "start") {
             currentStepId = step.next;
 
-        } else if (
-            step.type === "action" &&
-            step.actionType === "log"
-        ) {
-            console.log(`[Workflow Log] ${step.config.message}`);
+        } else if (step.type === "action") {
+
+            const handler = actionHandlers[step.actionType];
+
+            if (typeof handler !== "function") {
+                throw new Error(
+                    `Unsupported action: ${step.actionType}`
+                );
+            }
+
+            const result = handler(step.config);
+
+            for (const message of result.logs) {
+                console.log(`[Workflow Log] ${message}`);
+            }
+
             currentStepId = step.next;
 
         } else if (step.type === "end") {
@@ -40,4 +63,5 @@ export function runWorkflow(workflow) {
             throw new Error(`Unsupported step type: ${step.type}`);
         }
     }
+    return context;
 }
